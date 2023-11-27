@@ -12,6 +12,16 @@ class Loader:
     def data_filename_subway_location(self):
         return f"{self.path}지하철_좌표.csv"
 
+    def data_filename_seoulshape_location(self):
+        # Note that you need other `dbf, prj, shx` etc. files as well
+        return f"{self.path}LSMD_ADM_SECT_UMD_11_202311.shp"
+
+    def data_filename_roadshape_lite_location(self):
+        return f"{self.path}Z_KAIS_TL_SPRD_MANAGE_11000.shp"
+
+    def data_filename_nps(self):
+        return f"{self.path}NPS_entity_23_10.csv"
+
     def data_filename_subway_time(self):
         return f"{self.path}서울시_지하철_호선별_역별_시간대별_승하차_인원_정보.csv"
 

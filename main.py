@@ -1,6 +1,6 @@
 import pandas as pd
 
-from data_location import SubwayMapper
+from loc_subway import SubwayMapper
 from data_float_population import FloatPopulationSubwayTime
 
 from grid import Coordinate, Grid, trickle_down
