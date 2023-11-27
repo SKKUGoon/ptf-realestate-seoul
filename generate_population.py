@@ -9,7 +9,6 @@ from const_major_coordinate import GangnamStnBoundary
 
 print("Assorting data")
 fpt = FloatPopulationSubwayTime()
-fpt.load_data()
 
 mapper = SubwayMapper()
 mapper.mount_comparison(
