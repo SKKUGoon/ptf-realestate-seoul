@@ -13,7 +13,7 @@ class SubwayMapper:
     def __init__(self):
         # Load standard data - coordinate data
         loader = Loader()
-        loader.set_path("./asset/location")
+        loader.set_path("./asset/location/subway")
         data = pd.read_csv(loader.data_filename_subway_location())
         data.columns = ['c1', 'station_name', 'line_name', 'lon', 'lat']
 
