@@ -37,3 +37,16 @@ class SubwayMapper:
         # To be mapped
         self.comparison = tbm.copy()
         self.comparison.columns = [_name_set_func(c) for c in tbm.columns]
+
+    def create_join_data(self, verboes: bool = False):
+        merge_key = ['line_name', 'station_name']
+        for key in merge_key:
+            assert key in self.comparison.columns, f"make sure {key} in comparison data"
+            assert key in self.standard.columns, f"make sure {key} in standard data"
+
+        d = pd.merge(self.comparison, self.standard, on=merge_key, how='left')
+
+        subway_loc_assigned = d.loc[d['lat'].notnull()]
+        _subway_loc_unassigned = d.loc[d['lat'].isnull()]  # TODO: Find a way to figure out missing location
+
+        return subway_loc_assigned

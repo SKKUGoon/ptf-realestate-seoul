@@ -1,7 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 from pyproj import CRS
-from shapely.geometry import Point, MultiPoint
+from shapely.geometry import MultiPoint
 
 from loader import Loader
 
@@ -24,7 +24,6 @@ class RoadMapper:
         grs80_crs = CRS("+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs")
         self.standard = self.standard.to_crs(grs80_crs)
         self.standard = self.standard.to_crs(epsg=4326)
-        print(self.standard.crs)
 
         # Clean data - pick essential column
         essential_cols = [
@@ -36,7 +35,7 @@ class RoadMapper:
         self.standard = self.standard[essential_cols]
 
         # Assign location to each road - version 1 center point
-        self.v1_assign_coorinate()
+        self._v1_assign_coorinate()
 
         self.comparison = pd.DataFrame()
 
@@ -73,7 +72,7 @@ class RoadMapper:
         d['lat'] = d['geometry'].apply(lambda x: x.coords[0][1])
         return d
 
-    def v1_assign_coorinate(self):
+    def _v1_assign_coorinate(self):
         # In version 1, assign middle point of the road
         self.standard['location'] = self.standard['geometry'].apply(
             lambda x: x.interpolate(0.5, normalized=True)
