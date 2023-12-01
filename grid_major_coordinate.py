@@ -15,19 +15,21 @@ class BaseBoundary(Enum):
     RIGHT = None
     UP = None
     DOWN = None
+    bdname = None
 
     @classmethod
     def create(cls,
                left: int,
                right: int,
                up: int,
-               down: int):
+               down: int,
+               bdname: str):
         member_map = {
-            'LEFT': left, 'RIGHT': right, 'UP': up, 'DOWN': down,
+            'LEFT': left, 'RIGHT': right, 'UP': up, 'DOWN': down, 'bdname': bdname
         }
         return Enum('CustomBoundary', member_map)
 
 
 # Preset boundaries
-SeoulBoundary = BaseBoundary.create(20, 18, 13, 18)
-GangnamStnBoundary = BaseBoundary.create(2, 4, 4, 3)
+SeoulBoundary = BaseBoundary.create(20, 18, 13, 18, "Seoul")
+GangnamStnBoundary = BaseBoundary.create(2, 4, 4, 3, "Gangnam")
