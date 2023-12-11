@@ -102,6 +102,7 @@ class GridElement:
 +{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+
 | {dply(self.southwest, max_pad)} | {dply(self.south, max_pad)} | {dply(self.southeast, max_pad)} |
 +{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+
+{self.data_single}
 """
         return rep
 
@@ -269,7 +270,7 @@ class Grid:
         :param verbose:
         """
         for k, v in self.grid_element_map.items():
-            if isinstance(value_type, str):
+            if value_type == "string":
                 if k in grid_data_map.keys():
                     if verbose:
                         print(f"[Grid {k}] Update")
@@ -452,13 +453,15 @@ class Grid:
 
         result = pd.DataFrame(result, columns=col)
         if save:
-            filename = f"./generate/{self.grid_name}.csv"
+            filename = f"/Users/goonzard/Developer/portfolio-realestate/generate/{self.grid_name}.csv"
             result.to_csv(filename)
         return result
 
 
 def grid_matching_point(grid: Grid, data: pd.DataFrame, lon_lat_col_name: (str, str), verbose: bool = False):
-    assert lon_lat_col_name in data.columns
+    lon_col, lat_col = lon_lat_col_name
+    assert lon_col in data.columns
+    assert lat_col in data.columns
 
     # Return only the grid - matched process points
     data_np = data.to_numpy()

@@ -1,44 +1,43 @@
-from process.data_entity_nps import NPS
-from process.loc_road import RoadMapper
+from dao.dao import SimpleDatabaseAccess
 from grid.grid import Coordinate, Grid, grid_matching_point
 from grid.grid_major_coordinate import GANGNAM_STN_LAT, GANGNAM_STN_LON
 from grid.grid_major_coordinate import GangnamStnBoundary
 
 # ---- Data Layout ---- #
-nps = NPS()
-location = RoadMapper()
-location.mount_comparison(nps.data)
-locate_nps = location.create_join_data()
+# Get it from Database
+dao = SimpleDatabaseAccess()
+df = dao.select_geo_dataframe('CLEAN_PENSION')
 
 # ---- Grid Mapping ---- #
 gangnam = Coordinate(GANGNAM_STN_LON, GANGNAM_STN_LAT)
 g = Grid(gangnam, GangnamStnBoundary, 100, "GangnamNPS")
 
 # ---- Grid Assigning ---- #
-matched = grid_matching_point(g, locate_nps, ('lng', 'lat'), True)
+matched = grid_matching_point(g, df, ('x', 'y'), True)
 matched_np = matched.to_numpy()
 
-g.push_data_to_grids({v[0]: v[1] for v in matched_np}, 'name', 'string', True)  # entity name
-g.push_data_to_grids({v[0]: v[9] for v in matched_np}, 'people', 'number')  # people
-g.push_data_to_grids({v[0]: v[10] for v in matched_np}, 'pension', 'number')  # total pension
-g.push_data_to_grids({v[0]: v[11] for v in matched_np}, 'avg', 'number')  # ppp
+g.push_data_to_grids({v[0]: v[4] for v in matched_np}, 'amount', 'number', True)
+g.push_data_to_grids({v[0]: v[1] for v in matched_np}, 'business', 'string', True)
+g.push_data_to_grids({v[0]: v[3] for v in matched_np}, 'workers', 'number', True)
 
 # ---- Grid Spillover ---- #
 g.trickle_down(
     [g.grid_element_map[v[0]] for v in matched_np],
     1000 // g.single_size,
-    'avg',
+    'amount',
     '*0.8'
 )
 
 g.trickle_down(
     [g.grid_element_map[v[0]] for v in matched_np],
     1000 // g.single_size,
-    'people',
+    'workers',
     '*0.6'
 )
 
 # ---- Data Display ---- #
-df = g.grid_dataframe('avg')
-dfn = g.grid_dataframe('name')
-dfk = g.kepler_dataframe(['avg', 'people'])
+df = g.grid_dataframe('amount')
+dfw = g.grid_dataframe('workers')
+dfn = g.grid_dataframe('business')
+
+dfk = g.kepler_dataframe(['amount', 'workers', 'business'])
