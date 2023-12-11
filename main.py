@@ -1,3 +1,7 @@
 import pandas as pd
+import geopandas as gpd
+from dao.dao import SimpleDatabaseAccess
 
-df = pd.read_csv('nps_with_coord.csv', index_col=0)
+dao = SimpleDatabaseAccess()
+
+df = dao.select_geo_dataframe('CLEAN_PENSION')

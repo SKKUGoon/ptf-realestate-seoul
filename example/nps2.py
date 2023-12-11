@@ -4,10 +4,13 @@
 # Save it in the database
 
 import pandas as pd
+import geopandas as gpd
 import numpy as np
 from dotenv import load_dotenv
+from shapely import Point
 
 from process.data_entity_nps import NPS, CollectEntityCoordinate
+from process.constant import nps_clean_column
 from dao.dao import SimpleDatabaseAccess
 
 load_dotenv()
@@ -37,7 +40,13 @@ coords_df = pd.DataFrame([[c['x'], c['y']] for c in coords],
 # Merge NPS data with Coordinate
 nps_with_coord = pd.concat([cleaned, coords_df], axis=1)
 
+# To database
+geom = [Point(xy) for xy in zip(nps_with_coord['x'], nps_with_coord['y'])]
+gdf = gpd.GeoDataFrame(nps_with_coord, geometry=geom)
 
-
-
-
+dao.insert_geo_dataframe(
+    gdf,
+    'CLEAN_PENSION',
+    nps_clean_column,
+    'replace'
+)

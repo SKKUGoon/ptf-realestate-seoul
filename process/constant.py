@@ -15,6 +15,17 @@ nps_column = {
     'ppp': FLOAT,
 }
 
+nps_clean_column = {
+    'corpNm': VARCHAR,
+    'address': VARCHAR,
+    'ppl': INTEGER,
+    'amount': BIGINT,
+    'ppp': FLOAT,
+    'x': FLOAT,
+    'y': FLOAT,
+    'geometry': Geometry('Point', srid=4326)
+}
+
 road_column = {
     'ENG_RN': VARCHAR,
     'RN': VARCHAR,
@@ -47,3 +58,5 @@ subway_tpop_column = {
     'embark': INTEGER,
     'disembark': INTEGER
 }
+
+

@@ -66,6 +66,7 @@ class SimpleDatabaseAccess:
                              data: gpd.GeoDataFrame,
                              target_table: str,
                              column_type: dict,
+                             if_exists: Literal['append', 'replace'],
                              geometry_column: str = 'geometry',
                              epsg: int = 4326,
                              verbose: bool = True):
@@ -82,7 +83,7 @@ class SimpleDatabaseAccess:
         )
 
         engine = create_engine(self.engine_str)
-        df.to_sql(table, con=engine, schema=schema, if_exists='replace', index=False, dtype=column_type)
+        df.to_sql(table, con=engine, schema=schema, if_exists=if_exists, index=False, dtype=column_type)
         if verbose:
             print(f"Inserted {len(data)} rows into {table}")
         engine.dispose()
