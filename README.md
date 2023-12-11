@@ -4,6 +4,8 @@
 
 Using Various data and kepler.gl I will try to figure out the central business district.
 
+I'll name it MMS for MapMatrixScoring
+
 ## Regarding GRS80 and Bessel CRS system
 
 GRS80
