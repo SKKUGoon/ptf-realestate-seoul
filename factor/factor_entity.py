@@ -1,8 +1,8 @@
-from data_entity_nps import NPS
-from loc_road import RoadMapper
-from grid import Coordinate, Grid, grid_matching
-from grid_major_coordinate import GANGNAM_STN_LAT, GANGNAM_STN_LON
-from grid_major_coordinate import GangnamStnBoundary
+from process.data_entity_nps import NPS
+from process.loc_road import RoadMapper
+from grid.grid import Coordinate, Grid, grid_matching_point
+from grid.grid_major_coordinate import GANGNAM_STN_LAT, GANGNAM_STN_LON
+from grid.grid_major_coordinate import GangnamStnBoundary
 
 # ---- Data Layout ---- #
 nps = NPS()
@@ -15,7 +15,7 @@ gangnam = Coordinate(GANGNAM_STN_LON, GANGNAM_STN_LAT)
 g = Grid(gangnam, GangnamStnBoundary, 100, "GangnamNPS")
 
 # ---- Grid Assigning ---- #
-matched = grid_matching(g, locate_nps, ('lng', 'lat'), True)
+matched = grid_matching_point(g, locate_nps, ('lng', 'lat'), True)
 matched_np = matched.to_numpy()
 
 g.push_data_to_grids({v[0]: v[1] for v in matched_np}, 'name', 'string', True)  # entity name

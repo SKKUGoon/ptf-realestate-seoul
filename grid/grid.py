@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
 from pyproj import Geod
+from shapely import LineString, box
 
 from collections import deque
 from copy import copy
 
-from grid_major_coordinate import BaseBoundary
+from grid.grid_major_coordinate import BaseBoundary
 
 
 class Coordinate:
@@ -52,46 +53,55 @@ class GridElement:
         self.center = center
         self.single_size = grid_size_meter
 
+        self.index = -1  # -1 means that the Grid is yet to be assigned an index
         self.data_single = dict()
 
         # Nearby Grid
-        self.neighbor_north: GridElement | None = None
-        self.neighbor_south: GridElement | None = None
-        self.neighbor_west: GridElement | None = None
-        self.neighbor_east: GridElement | None = None
+        self.north: GridElement | None = None
+        self.south: GridElement | None = None
+        self.west: GridElement | None = None
+        self.east: GridElement | None = None
 
-        self.neighbor_northeast: GridElement | None = None
-        self.neighbor_northwest: GridElement | None = None
-        self.neighbor_southeast: GridElement | None = None
-        self.neighbor_southwest: GridElement | None = None
+        self.northeast: GridElement | None = None
+        self.northwest: GridElement | None = None
+        self.southeast: GridElement | None = None
+        self.southwest: GridElement | None = None
 
     def __repr__(self):
-        def _round_coord(val: float):
-            return round(val, 4)
+        def dply(val: GridElement | None, standard: int):
+            if val is None:
+                return ' ' * standard
+            s = str(val.index)
+            if len(s) > standard:
+                return f"{len(s)[:(standard-3)]}..."
+            elif len(s) == standard:
+                return s
+            else:
+                return f"{s}{' '* (standard - len(s))}"
 
         display = {
-            'n': self.neighbor_north,
-            's': self.neighbor_south,
-            'w': self.neighbor_west,
-            'e': self.neighbor_east,
-            'ne': self.neighbor_northeast,
-            'nw': self.neighbor_northwest,
-            'se': self.neighbor_southeast,
-            'sw': self.neighbor_southwest,
+            'n': self.north,
+            's': self.south,
+            'w': self.west,
+            'e': self.east,
+            'ne': self.northeast,
+            'nw': self.northwest,
+            'se': self.southeast,
+            'sw': self.southwest,
         }
-        display_value = dict()
-        for direction, coord in display.items():
-            if coord is not None:
-                value = list(map(_round_coord, coord.center.coordinate))
-                display_value[direction] = value
-            else:
-                display_value[direction] = ' ' * len('[123.1235, 37,1235]')
+        max_pad = 0
+        for obj in display.values():
+            if obj is not None:
+                max_pad = max(max_pad, len(str(obj.index)))
 
         rep = f"""
-{display_value['nw']} {display_value['n']} {display_value['ne']}
-{display_value['w']}<{list(map(_round_coord, self.center.coordinate))}>{display_value['e']}
-{display_value['sw']} {display_value['s']} {display_value['se']}
-data: {self.data_single}
++{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+
+| {dply(self.northwest, max_pad)} | {dply(self.north, max_pad)} | {dply(self.northeast, max_pad)} |
++{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+
+| {dply(self.west, max_pad)} | {dply(self, max_pad)} | {dply(self.east, max_pad)} |
++{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+
+| {dply(self.southwest, max_pad)} | {dply(self.south, max_pad)} | {dply(self.southeast, max_pad)} |
++{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+{'-' * (max_pad + 2)}+
 """
         return rep
 
@@ -152,6 +162,21 @@ data: {self.data_single}
         else:
             raise RuntimeError("check your input")
 
+    def pass_through(self, linestring: LineString) -> bool:
+        """
+        Checks if a shapely.geometry.LineString passes through or is contained
+        :param linestring: shapely.geometry.LineString object.
+        :return:
+        """
+        # Define a shapely box (polygon) representing the grid
+        grid_box = box(
+            self.top_left.lon, self.top_left.lat,
+            self.bottom_right.lon, self.bottom_right.lat
+        )
+
+        # Check if the LineString intersects or is contained in the grid
+        return grid_box.intersects(linestring) or grid_box.contains(linestring)
+
 
 class Grid:
     EARTH_RADIUS = 6371.0
@@ -169,7 +194,7 @@ class Grid:
         self.grid_name = f"{name}_{self.n}by{self.m}grid_{self.single_size}size"
         self.start = start
         self.grid_element_map = dict()
-        self.n_by_m_gridelement()
+        self.nm_grid_element()
 
     def _create_nm_coordinate(self) -> [Coordinate]:
         """
@@ -192,14 +217,14 @@ class Grid:
 
         return result
 
-    def n_by_m_gridelement(self) -> [GridElement]:
+    def nm_grid_element(self) -> [GridElement]:
         grid_center_points = self._create_nm_coordinate()
         grid_elements = [GridElement(p, grid_size_meter=self.single_size)
                          for p in grid_center_points]
 
         # Assign each grid an index. Record it in self.grid_element_map
         for idx, e in enumerate(grid_elements):
-            e.upsert_data_value('index', idx)
+            e.index = idx
             self.grid_element_map[idx] = e
 
         # Assign relationship with each grid
@@ -215,40 +240,40 @@ class Grid:
 
                 # Right angle bearing assign
                 if not no_up:
-                    grid_elements[grid_to_assign].neighbor_north = grid_elements[(i - 1) * self.m + j]
+                    grid_elements[grid_to_assign].north = grid_elements[(i - 1) * self.m + j]
                 if not no_down:
-                    grid_elements[grid_to_assign].neighbor_south = grid_elements[(i + 1) * self.m + j]
+                    grid_elements[grid_to_assign].south = grid_elements[(i + 1) * self.m + j]
                 if not no_left:
-                    grid_elements[grid_to_assign].neighbor_west = grid_elements[i * self.m + (j - 1)]
+                    grid_elements[grid_to_assign].west = grid_elements[i * self.m + (j - 1)]
                 if not no_right:
-                    grid_elements[grid_to_assign].neighbor_east = grid_elements[i * self.m + (j + 1)]
+                    grid_elements[grid_to_assign].east = grid_elements[i * self.m + (j + 1)]
 
                 # Diagonal bearing assign
                 if not no_up and not no_left:
-                    grid_elements[grid_to_assign].neighbor_northwest = grid_elements[(i - 1) * self.m + j - 1]
+                    grid_elements[grid_to_assign].northwest = grid_elements[(i - 1) * self.m + j - 1]
                 if not no_up and not no_right:
-                    grid_elements[grid_to_assign].neighbor_northeast = grid_elements[(i - 1) * self.m + j + 1]
+                    grid_elements[grid_to_assign].northeast = grid_elements[(i - 1) * self.m + j + 1]
                 if not no_down and not no_left:
-                    grid_elements[grid_to_assign].neighbor_southwest = grid_elements[(i + 1) * self.m + j - 1]
+                    grid_elements[grid_to_assign].southwest = grid_elements[(i + 1) * self.m + j - 1]
                 if not no_down and not no_right:
-                    grid_elements[grid_to_assign].neighbor_southeast = grid_elements[(i + 1) * self.m + j + 1]
+                    grid_elements[grid_to_assign].southeast = grid_elements[(i + 1) * self.m + j + 1]
 
         return grid_elements
 
     def push_data_to_grids(self, grid_data_map: dict, value_key: str, value_type: str, verbose: bool = False):
         """
-        Push single or multiple data regarding one key into grids in the grid map
-        :param grid_data_map: { grid index (as an identifier) : data value }
+        Push single or multiple process regarding one key into grids in the grid map
+        :param grid_data_map: { grid index (as an identifier) : process value }
         :param value_key: Keys that'll be stored for Grid.data_single
         :param value_type: Differs by its type. string or number(float or int)
         :param verbose:
         """
         for k, v in self.grid_element_map.items():
-            if value_type == "string":
+            if isinstance(value_type, str):
                 if k in grid_data_map.keys():
                     if verbose:
                         print(f"[Grid {k}] Update")
-                        print(f"Already data inserted beforehand. Adding {grid_data_map[k]} to {self.grid_element_map[k]}")
+                        print(f"Already process inserted beforehand. Adding {grid_data_map[k]} to {self.grid_element_map[k]}")
                     v.upsert_data_value(value_key, f" {grid_data_map[k]}")
                 else:
                     v.upsert_data_value(value_key, "")
@@ -256,7 +281,7 @@ class Grid:
                 if k in grid_data_map.keys():
                     if verbose:
                         print(f"[Grid {k}] Update")
-                        print(f"Already data inserted beforehand. Adding {grid_data_map[k]} to {self.grid_element_map[k]}")
+                        print(f"Already process inserted beforehand. Adding {grid_data_map[k]} to {self.grid_element_map[k]}")
                     v.upsert_data_value(value_key, grid_data_map[k])
                 else:
                     v.upsert_data_value(value_key, 0)
@@ -367,31 +392,31 @@ class Grid:
             current_element, current_steps, current_value = queue.popleft()
 
             # Skip if already visited with fewer steps
-            already_visited = current_element.data_single['index'] in visited
+            already_visited = current_element.index in visited
             visited_fewer_steps = (
-                    current_element.data_single['index'] in visited and
-                    visited[current_element.data_single['index']] <= current_steps
+                    current_element.index in visited and
+                    visited[current_element.index] <= current_steps
             )
             if already_visited or visited_fewer_steps:
                 continue
 
-            # Update the GridElement's data and mark as visited
+            # Update the GridElement's process and mark as visited
             current_element.set_data_value(value_key, current_value)
-            visited[current_element.data_single['index']] = current_steps
+            visited[current_element.index] = current_steps
 
             # Calculate the new value for the ext step
             next_value = self._decay(current_value, decay_factors)
 
             # Add the neighbors to the queue with reduced steps
             if current_steps > 0:
-                for neighbor in [current_element.neighbor_north,
-                                 current_element.neighbor_south,
-                                 current_element.neighbor_east,
-                                 current_element.neighbor_west,
-                                 current_element.neighbor_northeast,
-                                 current_element.neighbor_northwest,
-                                 current_element.neighbor_southeast,
-                                 current_element.neighbor_southwest]:
+                for neighbor in [current_element.north,
+                                 current_element.south,
+                                 current_element.east,
+                                 current_element.west,
+                                 current_element.northeast,
+                                 current_element.northwest,
+                                 current_element.southeast,
+                                 current_element.southwest]:
                     if neighbor is not None:
                         queue.append((neighbor, current_steps - 1, next_value))
 
@@ -399,7 +424,7 @@ class Grid:
         """
         If `target` key is inside the grid map's GridElement's data_single dictionary
             display it as a dataframe.
-        You can easily check the corresponding Grid's data.
+        You can easily check the corresponding Grid's process.
         :param target: key for dictionary `data_single`
         :return: pandas dataframe
         """
@@ -432,8 +457,10 @@ class Grid:
         return result
 
 
-def grid_matching(grid: Grid, data: pd.DataFrame, lon_lat_col_name: (str, str), verbose: bool = False):
-    # Return only the grid - matched data points
+def grid_matching_point(grid: Grid, data: pd.DataFrame, lon_lat_col_name: (str, str), verbose: bool = False):
+    assert lon_lat_col_name in data.columns
+
+    # Return only the grid - matched process points
     data_np = data.to_numpy()
 
     result = list()
@@ -443,7 +470,31 @@ def grid_matching(grid: Grid, data: pd.DataFrame, lon_lat_col_name: (str, str), 
 
         for ge in grid.grid_element_map.values():
             if ge.has(lon, lat):
-                result.append([ge.data_single['index'], *data_np[i]])
+                result.append([ge.index, *data_np[i]])
                 break  # one coordinate can only match one grid (not intersecting)
 
     return pd.DataFrame(result, columns=['grid_index', *data.columns])
+
+
+def grid_matching_line(grid: Grid, data: pd.DataFrame, line_segs_col_name: str, verbose: bool = False):
+    assert line_segs_col_name in data.columns
+
+    # Return only the grid - matched line. Drop the line
+    cols_no_line = data.columns.tolist()
+    cols_no_line.remove(line_segs_col_name)
+    data_np = data[cols_no_line].to_numpy()
+
+    result = list()
+    for i, line_segs in enumerate(data[line_segs_col_name]):
+        if verbose:
+            print(f"matching grid for {data_np[i][0]}", flush=True)
+
+        # Multiple line in line_segs
+        # If one of the line is matched, save the grid
+        # There can be multiple grids matched, so the returning dataframe might be bumped up
+        for line in line_segs:
+            for ge in grid.grid_element_map.values():
+                if ge.pass_through(line):
+                    result.append([ge.index, *data_np[i]])
+
+    return pd.DataFrame(result, columns=['grid_index', *cols_no_line])

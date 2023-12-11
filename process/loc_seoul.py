@@ -1,14 +1,13 @@
 import geopandas as gpd
-from pyproj import CRS
 
-from loader import Loader
+from process.loader import Loader
 
 
 class SeoulCityMapper:
     """
     Match
-        seoul location data with coordinate (standard)
-        nps data with partial address (comparison)
+        seoul location process with coordinate (standard)
+        nps process with partial address (comparison)
 
     +proj=tmerc: Specifies the Transverse Mercator projection.
     +ellps=bessel: Uses the Bessel ellipsoid.
@@ -20,7 +19,7 @@ class SeoulCityMapper:
     +no_defs: Prevents the use of default parameters.
     """
     def __init__(self):
-        # Load standard data - coordinate data (polygon data)
+        # Load standard process - coordinate process (polygon process)
         loader = Loader()
         loader.set_path("./asset/location/seoul_shape")
         self.data = gpd.read_file(
@@ -29,8 +28,7 @@ class SeoulCityMapper:
         )
 
         # Coordinate system projection. Bessel/central -> WGS84
-        bessel_crs = CRS("+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +units=m +no_defs +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43")
-        self.data = self.data.to_crs(bessel_crs)  # Default is wgs84, Read as bessel
+        self.data = self.data.to_crs(epsg=5174)  # Default is wgs84, Read as bessel
         self.data = self.data.to_crs(epsg=4326)  # Convert to wgs84
 
         # Add central point

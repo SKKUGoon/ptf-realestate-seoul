@@ -1,8 +1,8 @@
-from data_float_population import FloatPopulationSubwayTime
-from loc_subway import SubwayMapper
-from grid import Coordinate, Grid, grid_matching
-from grid_major_coordinate import GANGNAM_STN_LAT, GANGNAM_STN_LON
-from grid_major_coordinate import GangnamStnBoundary
+from process.data_float_population import FloatPopulationSubwayTime
+from process.loc_subway import SubwayMapper
+from grid.grid import Coordinate, Grid, grid_matching_point
+from grid.grid_major_coordinate import GANGNAM_STN_LAT, GANGNAM_STN_LON
+from grid.grid_major_coordinate import GangnamStnBoundary
 
 # ---- Data Layout ---- #
 fpt = FloatPopulationSubwayTime(202310)
@@ -15,7 +15,7 @@ gangnam = Coordinate(GANGNAM_STN_LON, GANGNAM_STN_LAT)
 g = Grid(gangnam, GangnamStnBoundary, 100, "GangnamSubway")
 
 # ---- Grid Assigning ---- #
-matched = grid_matching(g, locate_fpt, ('lon', 'lat'), True)
+matched = grid_matching_point(g, locate_fpt, ('lon', 'lat'), True)
 matched_np = matched.to_numpy()
 
 g.push_data_to_grids({v[0]: v[13] for v in matched_np}, 'arrive0809', 'number', True)  # 08-09 하차인원

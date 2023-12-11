@@ -1,3 +1,6 @@
+import os
+
+
 class Loader:
     def __init__(self, max_month: int = None):
         self.path = ""
@@ -5,9 +8,15 @@ class Loader:
 
     def set_path(self, path: str):
         if path[-1] == "/":
-            self.path = path
+            self.path = path.replace(
+                "./",
+                f"/Users/goonzard/Developer/portfolio-realestate/"
+            )
         else:
-            self.path = f"{path}/"
+            self.path = f"{path}/".replace(
+                "./",
+                f"/Users/goonzard/Developer/portfolio-realestate/"
+            )
 
     def data_filename_subway_location(self):
         return f"{self.path}지하철_좌표.csv"
@@ -21,6 +30,12 @@ class Loader:
 
     def data_filename_nps(self):
         return f"{self.path}NPS_entity_23_10.csv"
+
+    def data_filename_dart(self):
+        return f"{self.path}dart.csv"
+
+    def data_filename_collected(self):
+        return f"{self.path}corp_info_merged.csv"
 
     def data_filename_subway_time(self):
         return f"{self.path}서울시_지하철_호선별_역별_시간대별_승하차_인원_정보.csv"

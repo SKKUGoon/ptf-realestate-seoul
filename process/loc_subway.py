@@ -1,17 +1,17 @@
 import pandas as pd
 
-from loader import Loader
+from process.loader import Loader
 from util import clean_remove_bracket
 
 
 class SubwayMapper:
     """
     Match
-        subway data with coordinate (standard)
-        subway data with float population (comparison)
+        subway process with coordinate (standard)
+        subway process with float population (comparison)
     """
     def __init__(self):
-        # Load standard data - coordinate data
+        # Load standard process - coordinate process
         loader = Loader()
         loader.set_path("./asset/location/subway")
         data = pd.read_csv(loader.data_filename_subway_location())
@@ -41,8 +41,8 @@ class SubwayMapper:
     def create_join_data(self, verboes: bool = False):
         merge_key = ['line_name', 'station_name']
         for key in merge_key:
-            assert key in self.comparison.columns, f"make sure {key} in comparison data"
-            assert key in self.standard.columns, f"make sure {key} in standard data"
+            assert key in self.comparison.columns, f"make sure {key} in comparison process"
+            assert key in self.standard.columns, f"make sure {key} in standard process"
 
         d = pd.merge(self.comparison, self.standard, on=merge_key, how='left')
 
