@@ -4,3 +4,4 @@ Z_KAIS_TL_SPRD_MANAGE_11000*
 /asset/entity_dart/corp_info_merged.csv
 /asset/entity_dart/dart.csv
 /generate/*.csv
+/*/__pycache__/*
