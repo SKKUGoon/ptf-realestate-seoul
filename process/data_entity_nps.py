@@ -1,7 +1,13 @@
 import pandas as pd
 import numpy as np
+import requests
+from dotenv import load_dotenv
 
 from process.loader import Loader
+
+from typing import Tuple
+import os
+import re
 
 
 class NPS:
@@ -70,12 +76,10 @@ class NPS:
         return data
 
 
-class CollectEntityAddress:
+class CollectEntityCoordinate:
+    # Merge NPS entity with main
+    # Merge NPS
     def __init__(self):
-        col = ['business', 'j_addr']
-        # self.nps_data = data_class.data[col]
-        # self.nps_data['business_clean'] = self.nps_data['business'].apply(self._clean_name)
-
         # DART code process
         self.data = self.load_data(use_collected=True)
 
@@ -172,15 +176,79 @@ class CollectEntityAddress:
                 no_dup.append(data_np[idx])
         return pd.DataFrame(no_dup, columns = data.columns)
 
+    def clean(self, nps_data: pd.DataFrame) -> pd.DataFrame:
+        nps = nps_data.copy(deep=True)
+        nps['corpNm'] = nps['business']
 
-if __name__ == "__main__":
-    from dao.dao import SimpleDatabaseAccess
-    from process.constant import nps_column
+        col = nps.columns
+        post_clean_col = ['corpNm', 'address', 'ppl', 'amount', 'ppp']
 
-    nps = NPS()
-    df = nps.data
+        s1, f1 = self._try1(nps)  # First clean up
+        s2, f2 = self._try2(f1[col])  # Second clean up (First clean up cumulative)
+        s3, _ = self._try3(f2[col])  # Third clean up
 
-    dao = SimpleDatabaseAccess()
-    dao.insert_dataframe(nps.data, 'FACTOR_PENSION', nps_column, True)
-    df_db = NPS.prep_merge(dao.select_dataframe('FACTOR_PENSION'))
-    collect = CollectEntityAddress()
+        s1 = self.clean_duplicate(s1, 'address', ('j_addr', 'r_addr'))[post_clean_col]
+        s2 = self.clean_duplicate(s2, 'address', ('j_addr', 'r_addr'))[post_clean_col]
+        s3 = self.clean_duplicate(s3, 'address', ('j_addr', 'r_addr'))[post_clean_col]
+
+        clean = pd.concat([s1, s2, s3]).reset_index(drop=True)
+        return clean
+
+    def _try1(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        data.loc[:, 'corpNm'] = data['corpNm'].apply(self.clean_name_stg1)
+        mrg = pd.merge(data, self.data, on=['corpNm'], how='left')
+
+        success = mrg.loc[mrg['address'].notna()]
+        fail = mrg.loc[mrg['address'].isna()]
+        return success, fail
+
+    def _try2(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        data.loc[:, 'corpNm'] = data['corpNm'].apply(self.clean_name_stg1)
+        data.loc[:, 'corpNm'] = data['corpNm'].apply(self.clean_name_stg2)
+        mrg = pd.merge(data, self.data, on=['corpNm'], how='left')
+
+        success = mrg.loc[mrg['address'].notna()]
+        fail = mrg.loc[mrg['address'].isna()]
+        return success, fail
+
+    def _try3(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        data.loc[:, 'corpNm'] = data['corpNm'].apply(self.clean_name_stg1)
+        data.loc[:, 'corpNm'] = data['corpNm'].apply(self.clean_name_stg2)
+        data.loc[:, 'corpNm'] = data['corpNm'].apply(self.clean_name_stg3)
+        mrg = pd.merge(data, self.data, on=['corpNm'], how='left')
+
+        success = mrg.loc[mrg['address'].notna()]
+        fail = mrg.loc[mrg['address'].isna()]
+        return success, fail
+
+    @staticmethod
+    def address_to_coord(addr: str, verbose: bool = False):
+        """
+        Return the coordinates tuple of given full address
+        """
+        # Strip address of brackets substring and whitespaces
+        clean_addr = (re.sub(r'\(.*?\)', '', addr)
+                      .strip()
+                      .replace('  ', ' '))
+        if verbose:
+            print(f"Query vworld for {clean_addr}")
+
+        url = 'http://api.vworld.kr/req/address'
+        params = {
+            "service": "address",
+            "request": "getcoord",
+            "crs": "epsg:4326",
+            "address": clean_addr,
+            "format": "json",
+            "type": "road",
+            "key": os.getenv('VWORLD')
+        }
+        resp = requests.get(url, params= params)
+        if resp.status_code == 200:
+            try:
+                return resp.json()['response']['result']['point']
+            except KeyError:
+                # Empty coordinate
+                return {'x': np.nan, 'y': np.nan}
+        else:
+            raise FileNotFoundError(f"Query vworld fail for {clean_addr}")
